@@ -12,7 +12,7 @@
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 #include <signal.h>
-#include <gpio/gpiodev_extern.h>
+#include <gpiodev/gpiodev_extern.h>
 
 int spibus_init(spibus *dev)
 {
