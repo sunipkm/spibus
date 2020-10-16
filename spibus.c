@@ -1,4 +1,4 @@
-#include <spibus.h>
+#include "spibus.h"
 #include <string.h>
 #include <stdint.h>
 #include <string.h>
@@ -12,7 +12,7 @@
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 #include <signal.h>
-#include <gpiodev/gpiodev_extern.h>
+#include <gpiodev/gpiodev.h>
 
 int spibus_init(spibus *dev)
 {
@@ -29,7 +29,7 @@ int spibus_init(spibus *dev)
         dev->bits = 8;
     }
 
-    if (speed == 0) // in case max speed was not stipulated
+    if (dev->speed == 0) // in case max speed was not stipulated
     {
         speed = 1000000; // 1 MHz
         dev->speed = speed;
@@ -37,6 +37,7 @@ int spibus_init(spibus *dev)
 
     if (dev->cs_internal == CS_EXTERNAL) // GPIO as chip select
     {
+        gpioSetMode(dev->cs_gpio, GPIO_OUT);
         gpioWrite(dev->cs_gpio, GPIO_HIGH);
     }
 
@@ -44,7 +45,7 @@ int spibus_init(spibus *dev)
     char spibusname[256];
     if (snprintf(spibusname, 256, "/dev/spidev%d.%d", dev->bus, dev->cs) < 0)
     {
-        printf("%s: Error in creating device bus name\n");
+        fprintf(stderr, "%s: Error in creating device bus name\n", __func__);
         return -1;
     }
 
