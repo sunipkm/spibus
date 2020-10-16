@@ -185,5 +185,4 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
 void spibus_destroy(spibus *dev)
 {
     close(dev->fd);
-    free(dev);
 }
