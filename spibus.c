@@ -51,7 +51,8 @@ int spibus_init(spibus *dev)
 
     if ((file = open(spibusname, O_RDWR)) < 0)
     {
-        perror("SPIBUS: Opening bus");
+        fprintf(stderr, "SPIBUS: Opening bus %s", spibusname);
+        perror("Error: ");
         return -1;
     }
 
