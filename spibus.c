@@ -154,8 +154,8 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
         fprintf(stderr, "%02X ", tmp[i]);
     fprintf(stderr, "\n\n");
 #endif
-    dev->xfer[0].tx_buf = (unsigned long)in;
-    dev->xfer[0].rx_buf = (unsigned long)out;
+    dev->xfer[0].tx_buf = (unsigned long)out;
+    dev->xfer[0].rx_buf = (unsigned long)in;
     dev->xfer[0].len = ilen < olen ? ilen : olen; // whichever is shorter to avoid access violation
     if (dev->cs_internal == CS_EXTERNAL)          // chip select is not internal
     {
