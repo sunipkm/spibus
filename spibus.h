@@ -84,7 +84,7 @@ void spibus_destroy(spibus *dev);
 inline void spibus_invert(void *dest, void *src, ssize_t len)
 {
     unsigned int last = len - 1;
-    unsigned char *tmpsrc, *tmpdest;
+    unsigned char *tmpsrc = src, *tmpdest = dest;
     for (unsigned int i = 0; i < len; i++)
     {
         tmpdest[i] = tmpsrc[last - i];
