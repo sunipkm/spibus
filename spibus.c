@@ -28,7 +28,7 @@ int spibus_init(spibus *dev)
     {
         dev->bits = 8;
     }
-
+	bits = dev->bits;
     if (dev->speed == 0) // in case max speed was not stipulated
     {
         speed = 1000000; // 1 MHz
@@ -40,7 +40,7 @@ int spibus_init(spibus *dev)
         gpioSetMode(dev->cs_gpio, GPIO_OUT);
         gpioWrite(dev->cs_gpio, GPIO_HIGH);
     }
-
+	speed = 2500000;
     // open SPI bus
     char spibusname[256];
     if (snprintf(spibusname, 256, "/dev/spidev%d.%d", dev->bus, dev->cs) < 0)
@@ -148,15 +148,19 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
 {
     int status = 0;
 #ifdef SPIDEBUG
-    unsigned char *tmp = in;
+	fprintf(stderr, "%s: In -> 0x%x, Out -> 0x%x\n", __func__, in, out);
+    unsigned char *tmp = out;
     fprintf(stderr, "%s: Out: ", __func__);
     for (unsigned i = 0; i < ilen; i++)
         fprintf(stderr, "%02X ", tmp[i]);
-    fprintf(stderr, "\n\n");
+    fprintf(stderr, "\n");
 #endif
     dev->xfer[0].tx_buf = (unsigned long)out;
     dev->xfer[0].rx_buf = (unsigned long)in;
     dev->xfer[0].len = ilen < olen ? ilen : olen; // whichever is shorter to avoid access violation
+#ifdef SPIDEBUG
+	fprintf(stderr, "%s: Output length: %d\n", __func__, dev->xfer[0].len);
+#endif
     if (dev->cs_internal == CS_EXTERNAL)          // chip select is not internal
     {
         gpioWrite(dev->cs_gpio, GPIO_LOW); // active low transfer
@@ -172,7 +176,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
         return -1;
     }
 #ifdef SPIDEBUG
-    tmp = out;
+    tmp = in;
     fprintf(stderr, "%s: In: ", __func__);
     for (unsigned i = 0; i < olen; i++)
         fprintf(stderr, "%02X ", tmp[i]);
