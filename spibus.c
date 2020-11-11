@@ -148,7 +148,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
 {
     int status = 0;
 #ifdef SPIDEBUG
-	fprintf(stderr, "%s: In -> 0x%x, Out -> 0x%x\n", __func__, in, out);
+	fprintf(stderr, "%s: In -> 0x%p, Out -> 0x%p\n", __func__, in, out);
     unsigned char *tmp = out;
     fprintf(stderr, "%s: Out: ", __func__);
     for (unsigned i = 0; i < ilen; i++)
@@ -164,6 +164,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     if (dev->cs_internal == CS_EXTERNAL)          // chip select is not internal
     {
         gpioWrite(dev->cs_gpio, GPIO_LOW); // active low transfer
+		// usleep(100);
     }
     status = ioctl(dev->fd, SPI_IOC_MESSAGE(1), dev->xfer);
     if (dev->cs_internal == CS_EXTERNAL)
