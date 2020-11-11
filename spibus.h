@@ -10,7 +10,6 @@
 #ifndef SPI_BUS_H
 #define SPI_BUS_H
 
-#include <macros.h>
 #include <stdint.h>
 #include <sys/types.h>
 #include <linux/types.h>
