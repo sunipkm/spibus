@@ -40,7 +40,7 @@ int spibus_init(spibus *dev)
         gpioSetMode(dev->cs_gpio, GPIO_OUT);
         gpioWrite(dev->cs_gpio, GPIO_HIGH);
     }
-	speed = 2500000;
+    speed = 2500000; // Temporary (and max) bus speed
     // open SPI bus
     char spibusname[256];
     if (snprintf(spibusname, 256, "/dev/spidev%d.%d", dev->bus, dev->cs) < 0)
@@ -108,7 +108,7 @@ int spibus_init(spibus *dev)
 
     dev->xfer[0].cs_change = 0;             // Keep CS activated for the whole word
     dev->xfer[0].delay_usecs = 0;           // delay in microseconds
-    dev->xfer[0].speed_hz = speed;          // speed of communication
+    dev->xfer[0].speed_hz = dev->speed;     // speed of communication
     dev->xfer[0].bits_per_word = dev->bits; // bits per word
 
     return 1;
