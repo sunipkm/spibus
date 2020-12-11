@@ -14,8 +14,26 @@
 #include <signal.h>
 #include <gpiodev/gpiodev.h>
 
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+
+static pthread_mutex_t spibus_lock[NUM_SPI_MASTER]; /// Lock corresponding to a bus master for interleaved read/writes and GPIO issues
+static int spibus_mutex_initd = 0;                  /// mutex initialization indicator
+
 int spibus_init(spibus *dev)
 {
+    if (spibus_mutex_initd++ == 0)
+    {
+        for (int i = 0; i < NUM_SPI_MASTER; i++)
+        {
+            int ret = pthread_mutex_init(&(spibus_lock[i]), NULL);
+            if (ret != 0)
+            {
+                eprintf("%s: Failed to initialize SPIBUS mutex for master %d. ", __func__, i);
+                perror("mutex init");
+                return ret;
+            }
+        }
+    }
     int file;
     __u8 mode, lsb, bits;
     __u32 speed;
@@ -28,7 +46,7 @@ int spibus_init(spibus *dev)
     {
         dev->bits = 8;
     }
-	bits = dev->bits;
+    bits = dev->bits;
     if (dev->speed == 0) // in case max speed was not stipulated
     {
         speed = 1000000; // 1 MHz
@@ -40,7 +58,7 @@ int spibus_init(spibus *dev)
         gpioSetMode(dev->cs_gpio, GPIO_OUT);
         gpioWrite(dev->cs_gpio, GPIO_HIGH);
     }
-	speed = 2500000;
+    speed = 2500000;
     // open SPI bus
     char spibusname[256];
     if (snprintf(spibusname, 256, "/dev/spidev%d.%d", dev->bus, dev->cs) < 0)
@@ -126,6 +144,7 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len)
 #endif
     dev->xfer[0].tx_buf = (unsigned long)data;
     dev->xfer[0].len = len;
+    pthread_mutex_lock(&(spibus_lock[dev->bus)]);
     if (dev->cs_internal == CS_EXTERNAL) // chip select is not internal
     {
         gpioWrite(dev->cs_gpio, GPIO_LOW); // active low transfer
@@ -135,6 +154,7 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len)
     {
         gpioWrite(dev->cs_gpio, GPIO_HIGH); // high after transfer
     }
+    pthread_mutex_unlock(&(spibus_lock[dev->bus)]);
     if (status < 0)
     {
         perror("SPIBUS: SPI transfer");
@@ -148,7 +168,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
 {
     int status = 0;
 #ifdef SPIDEBUG
-	fprintf(stderr, "%s: In -> 0x%p, Out -> 0x%p\n", __func__, in, out);
+    fprintf(stderr, "%s: In -> 0x%p, Out -> 0x%p\n", __func__, in, out);
     unsigned char *tmp = out;
     fprintf(stderr, "%s: Out: ", __func__);
     for (unsigned i = 0; i < ilen; i++)
@@ -159,18 +179,20 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     dev->xfer[0].rx_buf = (unsigned long)in;
     dev->xfer[0].len = ilen < olen ? ilen : olen; // whichever is shorter to avoid access violation
 #ifdef SPIDEBUG
-	fprintf(stderr, "%s: Output length: %d\n", __func__, dev->xfer[0].len);
+    fprintf(stderr, "%s: Output length: %d\n", __func__, dev->xfer[0].len);
 #endif
-    if (dev->cs_internal == CS_EXTERNAL)          // chip select is not internal
+    pthread_mutex_lock(&(spibus_lock[dev->bus)]);
+    if (dev->cs_internal == CS_EXTERNAL) // chip select is not internal
     {
         gpioWrite(dev->cs_gpio, GPIO_LOW); // active low transfer
-		// usleep(100);
+                                           // usleep(100);
     }
     status = ioctl(dev->fd, SPI_IOC_MESSAGE(1), dev->xfer);
     if (dev->cs_internal == CS_EXTERNAL)
     {
         gpioWrite(dev->cs_gpio, GPIO_HIGH); // high after transfer
     }
+    pthread_mutex_unlock(&(spibus_lock[dev->bus)]);
     if (status < 0)
     {
         perror("SPIBUS: SPI transfer");
@@ -189,5 +211,18 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
 
 void spibus_destroy(spibus *dev)
 {
+    if (--spibus_mutex_initd == 0)
+    {
+        for (int i = 0; i < NUM_SPI_MASTER; i++)
+        {
+            int ret = pthread_mutex_destroy(&(spibus_lock[i]));
+            if (ret != 0)
+            {
+                eprintf("%s: Failed to destroy SPIBUS mutex for master %d. ", __func__, i);
+                perror("mutex destroy");
+                return ret;
+            }
+        }
+    }
     close(dev->fd);
 }

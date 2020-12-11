@@ -15,6 +15,8 @@
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
 
+#define NUM_SPI_MASTER 3 // 0, 1, 2
+
 #define CS_INTERNAL 1
 #define CS_EXTERNAL 0
 
