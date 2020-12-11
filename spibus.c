@@ -58,11 +58,7 @@ int spibus_init(spibus *dev)
         gpioSetMode(dev->cs_gpio, GPIO_OUT);
         gpioWrite(dev->cs_gpio, GPIO_HIGH);
     }
-<<<<<<< HEAD
-    speed = 2500000;
-=======
     speed = 2500000; // Temporary (and max) bus speed
->>>>>>> bd9f9ee06cc3fc4246c71cca2cc563ec089cd91b
     // open SPI bus
     char spibusname[256];
     if (snprintf(spibusname, 256, "/dev/spidev%d.%d", dev->bus, dev->cs) < 0)
