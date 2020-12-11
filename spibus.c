@@ -220,7 +220,6 @@ void spibus_destroy(spibus *dev)
             {
                 eprintf("%s: Failed to destroy SPIBUS mutex for master %d. ", __func__, i);
                 perror("mutex destroy");
-                return ret;
             }
         }
     }
