@@ -148,7 +148,7 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len)
 #endif
     dev->xfer[0].tx_buf = (unsigned long)data;
     dev->xfer[0].len = len;
-    pthread_mutex_lock(&(spibus_lock[dev->bus)]);
+    pthread_mutex_lock(&(spibus_lock[dev->bus]));
     if (dev->cs_internal == CS_EXTERNAL) // chip select is not internal
     {
         gpioWrite(dev->cs_gpio, GPIO_LOW); // active low transfer
@@ -158,7 +158,7 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len)
     {
         gpioWrite(dev->cs_gpio, GPIO_HIGH); // high after transfer
     }
-    pthread_mutex_unlock(&(spibus_lock[dev->bus)]);
+    pthread_mutex_unlock(&(spibus_lock[dev->bus]));
     if (status < 0)
     {
         perror("SPIBUS: SPI transfer");
@@ -185,7 +185,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
 #ifdef SPIDEBUG
     fprintf(stderr, "%s: Output length: %d\n", __func__, dev->xfer[0].len);
 #endif
-    pthread_mutex_lock(&(spibus_lock[dev->bus)]);
+    pthread_mutex_lock(&(spibus_lock[dev->bus]));
     if (dev->cs_internal == CS_EXTERNAL) // chip select is not internal
     {
         gpioWrite(dev->cs_gpio, GPIO_LOW); // active low transfer
@@ -196,7 +196,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     {
         gpioWrite(dev->cs_gpio, GPIO_HIGH); // high after transfer
     }
-    pthread_mutex_unlock(&(spibus_lock[dev->bus)]);
+    pthread_mutex_unlock(&(spibus_lock[dev->bus]));
     if (status < 0)
     {
         perror("SPIBUS: SPI transfer");
