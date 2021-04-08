@@ -49,7 +49,7 @@ int spibus_init(spibus *dev)
     bits = dev->bits;
     if (dev->speed == 0) // in case max speed was not stipulated
     {
-        speed = 1000000; // 1 MHz
+        speed = 500000; // 1 MHz
         dev->speed = speed;
     }
 
@@ -58,7 +58,7 @@ int spibus_init(spibus *dev)
         gpioSetMode(dev->cs_gpio, GPIO_OUT);
         gpioWrite(dev->cs_gpio, GPIO_HIGH);
     }
-    speed = 2500000; // Temporary (and max) bus speed
+    speed = 1000000; // Temporary (and max) bus speed
     // open SPI bus
     char spibusname[256];
     if (snprintf(spibusname, 256, "/dev/spidev%d.%d", dev->bus, dev->cs) < 0)
