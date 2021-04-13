@@ -38,6 +38,8 @@ typedef struct __attribute__((packed))
 /**
  * @brief Initializes SPI bus with pre-configured settings. Settings are preconfigured
  * by device initializer whose member is the spibus struct that is passed as input.
+ * Memory for the struct should be cleared before setting configs to avoid spurious flag
+ * settings.
  * 
  * @param dev spibus struct containing SPI Bus number to open, mode, speed, lsbfirst etc
  * 
@@ -48,9 +50,8 @@ int spibus_init(spibus *dev);
  * @brief Transfer data over SPI bus described by dev.
  * 
  * @param dev spibus struct describing the SPI bus
- * @param data Ideally a buffer of bytes. The transfer function will not flip
- * little endian data to meet MSBFirst data transfers, though the spibus library
- * provides a function for the inversion.
+ * @param data Ideally a buffer of bytes. The function uses the lsb flag to
+ * fix the endianness of the input array (assumed to be little endian).
  * @param len Length of the supplied buffer (in bytes)
  * 
  * @return status of the ioctl call for the transfer
@@ -60,11 +61,11 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len);
  * @brief Transfer data over SPI bus described by dev.
  * 
  * @param dev spibus struct describing the SPI bus
- * @param in Ideally a buffer of bytes. The transfer function will not flip
- * little endian data to meet MSBFirst data transfers, though the spibus library
- * provides a function for the inversion.
+ * @param in Ideally a buffer of bytes. The function uses the lsb flag to
+ * fix the endianness of the input array (assumed to be little endian).
  * @param ilen Length of the supplied buffer (in bytes)
- * @param out Pointer to output data buffer (bytes)
+ * @param out Ideally a buffer of bytes. The function uses the lsb flag to
+ * fix the endianness of the output array (assumed to be little endian).
  * @param olen Length of expected output (bytes)
  * 
  * @return status of the ioctl call for the transfer
@@ -74,23 +75,5 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
  * @brief Destroy the SPI bus. For errors, look at close() syscall.
  */
 void spibus_destroy(spibus *dev);
-/**
- * @brief Invert array for MSB first transfer of multibyte data. Memory
- * management is entirely upon the caller.
- * 
- * @param dest Destination pointer
- * @param src Source pointer
- * @param len Length of source and destination buffers.
- */
-inline void spibus_invert(void *dest, void *src, ssize_t len)
-{
-    unsigned int last = len - 1;
-    unsigned char *tmpsrc = (unsigned char *) src, *tmpdest = (unsigned char *) dest;
-    for (int i = 0; i < len; i++)
-    {
-        tmpdest[i] = tmpsrc[last - i];
-    }
-    return;
-}
 
 #endif // SPI_BUS_H

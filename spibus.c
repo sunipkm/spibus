@@ -14,13 +14,20 @@
 #include <signal.h>
 #include <gpiodev/gpiodev.h>
 
-#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#define eprintf(str, ...)                                    \
+    fprintf(stderr, "%s" str "\n", __func__, ##__VA_ARGS__); \
+    fflush(stderr);
 
 static pthread_mutex_t spibus_lock[NUM_SPI_MASTER]; /// Lock corresponding to a bus master for interleaved read/writes and GPIO issues
 static int spibus_mutex_initd = 0;                  /// mutex initialization indicator
 
 int spibus_init(spibus *dev)
 {
+    if (dev == NULL)
+    {
+        eprintf("Memory not allocated for device");
+        return -1;
+    }
     if (spibus_mutex_initd++ == 0)
     {
         for (int i = 0; i < NUM_SPI_MASTER; i++)
@@ -28,7 +35,7 @@ int spibus_init(spibus *dev)
             int ret = pthread_mutex_init(&(spibus_lock[i]), NULL);
             if (ret != 0)
             {
-                eprintf("%s: Failed to initialize SPIBUS mutex for master %d. ", __func__, i);
+                eprintf("Failed to initialize SPIBUS mutex for master %d. ", i);
                 perror("mutex init");
                 return ret;
             }
@@ -132,6 +139,25 @@ int spibus_init(spibus *dev)
     return 1;
 }
 
+/**
+ * @brief Invert array for MSB first transfer of multibyte data. Memory
+ * management is entirely upon the caller.
+ * 
+ * @param dest Destination pointer
+ * @param src Source pointer
+ * @param len Length of source and destination buffers.
+ */
+inline void spibus_invert(void *dest, void *src, ssize_t len)
+{
+    unsigned int last = len - 1;
+    unsigned char *tmpsrc = (unsigned char *)src, *tmpdest = (unsigned char *)dest;
+    for (int i = 0; i < len; i++)
+    {
+        tmpdest[i] = tmpsrc[last - i];
+    }
+    return;
+}
+
 int spibus_xfer(spibus *dev, void *data, ssize_t len)
 {
     int status = 0;
@@ -142,7 +168,23 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len)
         fprintf(stderr, "%02X ", tmp[i]);
     fprintf(stderr, "\n\n");
 #endif
-    dev->xfer[0].tx_buf = (unsigned long)data;
+    char *o_data = (char *)malloc(len);
+    if (o_data == NULL)
+    {
+        eprintf("Could not allocate memory for MSB conversion");
+        perror("malloc");
+        return -1;
+    }
+    if (!dev->lsb) // MSB first
+    {
+        spibus_invert(o_data, data, len);
+    }
+    else
+    {
+        memcpy(o_data, data, len);
+    }
+    // TODO: 64-bit compatibility in typecasting
+    dev->xfer[0].tx_buf = (unsigned long)o_data;
     dev->xfer[0].len = len;
     pthread_mutex_lock(&(spibus_lock[dev->bus]));
     if (dev->cs_internal == CS_EXTERNAL) // chip select is not internal
@@ -175,9 +217,29 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
         fprintf(stderr, "%02X ", tmp[i]);
     fprintf(stderr, "\n");
 #endif
-    dev->xfer[0].tx_buf = (unsigned long)out;
-    dev->xfer[0].rx_buf = (unsigned long)in;
-    dev->xfer[0].len = ilen < olen ? ilen : olen; // whichever is shorter to avoid access violation
+    ssize_t len = ilen < olen ? ilen : olen; // common length
+
+    char *o_data = (char *)malloc(len);
+    if (!dev->lsb) // MSB first
+    {
+        spibus_invert(o_data, out, len);
+    }
+    else
+    {
+        memcpy(o_data, out, len);
+    }
+
+    char *i_data = (char *)malloc(len);
+    if (i_data == NULL)
+    {
+        eprintf("Could not allocate memory for MSB conversion");
+        perror("malloc");
+        return -1;
+    }
+    // TODO: 64-bit compatibility in typecasting
+    dev->xfer[0].tx_buf = (unsigned long)o_data;
+    dev->xfer[0].rx_buf = (unsigned long)i_data;
+    dev->xfer[0].len = len; // whichever is shorter to avoid access violation
 #ifdef SPIDEBUG
     fprintf(stderr, "%s: Output length: %d\n", __func__, dev->xfer[0].len);
 #endif
@@ -206,6 +268,15 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     fprintf(stderr, "\n\n");
 #endif
     usleep(dev->sleeplen);
+
+    if (!dev->lsb) // MSB first
+    {
+        spibus_invert(in, i_data, len);
+    }
+    else
+    {
+        memcpy(in, i_data, len);
+    }
     return status;
 }
 
@@ -218,7 +289,7 @@ void spibus_destroy(spibus *dev)
             int ret = pthread_mutex_destroy(&(spibus_lock[i]));
             if (ret != 0)
             {
-                eprintf("%s: Failed to destroy SPIBUS mutex for master %d. ", __func__, i);
+                eprintf("Failed to destroy SPIBUS mutex for master %d. ", i);
                 perror("mutex destroy");
             }
         }
