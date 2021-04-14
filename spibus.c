@@ -28,6 +28,7 @@ int spibus_init(spibus *dev)
         eprintf("Memory not allocated for device");
         return -1;
     }
+    memset(dev->xfer, 0x0, sizeof(struct spi_ioc_transfer));
     if (spibus_mutex_initd++ == 0)
     {
         for (int i = 0; i < NUM_SPI_MASTER; i++)
@@ -135,8 +136,7 @@ int spibus_init(spibus *dev)
     dev->xfer[0].delay_usecs = 0;           // delay in microseconds
     dev->xfer[0].speed_hz = dev->speed;     // speed of communication
     dev->xfer[0].bits_per_word = dev->bits; // bits per word
-    dev->xfer[0].tx_buf = 0;
-    dev->xfer[0].rx_buf = 0;
+
     return 1;
 }
 
