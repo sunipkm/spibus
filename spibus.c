@@ -135,7 +135,8 @@ int spibus_init(spibus *dev)
     dev->xfer[0].delay_usecs = 0;           // delay in microseconds
     dev->xfer[0].speed_hz = dev->speed;     // speed of communication
     dev->xfer[0].bits_per_word = dev->bits; // bits per word
-
+    dev->xfer[0].tx_buf = 0;
+    dev->xfer[0].rx_buf = 0;
     return 1;
 }
 
