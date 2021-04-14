@@ -261,13 +261,6 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
         perror("SPIBUS: SPI transfer");
         return -1;
     }
-#ifdef SPIDEBUG
-    tmp = in;
-    fprintf(stderr, "%s: In: ", __func__);
-    for (unsigned i = 0; i < olen; i++)
-        fprintf(stderr, "%02X ", tmp[i]);
-    fprintf(stderr, "\n\n");
-#endif
     usleep(dev->sleeplen);
 
     if (!dev->lsb) // MSB first
@@ -278,6 +271,13 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     {
         memcpy(in, i_data, len);
     }
+#ifdef SPIDEBUG
+    tmp = in;
+    fprintf(stderr, "%s: In: ", __func__);
+    for (unsigned i = 0; i < olen; i++)
+        fprintf(stderr, "%02X ", tmp[i]);
+    fprintf(stderr, "\n\n");
+#endif
     return status;
 }
 
