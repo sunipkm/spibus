@@ -185,7 +185,7 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len)
         perror("malloc");
         return -1;
     }
-    if (!dev->lsb) // MSB first
+    if ((!dev->lsb) && (len > 1)) // MSB first
     {
         spibus_invert(o_data, data, len);
     }
@@ -230,7 +230,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     ssize_t len = ilen < olen ? ilen : olen; // common length
 
     char *o_data = (char *)malloc(len);
-    if (!dev->lsb) // MSB first
+    if ((!dev->lsb) && (len > 1)) // MSB first
     {
         spibus_invert(o_data, out, len);
     }
@@ -272,7 +272,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     }
     usleep(dev->sleeplen);
 
-    if (!dev->lsb) // MSB first
+    if ((!dev->lsb) && (len > 1)) // MSB first
     {
         spibus_invert(in, i_data, len);
     }
