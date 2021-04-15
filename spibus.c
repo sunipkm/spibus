@@ -79,13 +79,13 @@ int spibus_init(spibus *dev)
     char spibusname[256];
     if (snprintf(spibusname, 256, "/dev/spidev%d.%d", dev->bus, dev->cs) < 0)
     {
-        fprintf(stderr, "%s: Error in creating device bus name\n", __func__);
+        eprintf("Error in creating device bus name");
         return -1;
     }
 
     if ((file = open(spibusname, O_RDWR)) < 0)
     {
-        fprintf(stderr, "SPIBUS: Opening bus %s", spibusname);
+        eprintf("Can not open bus %s", spibusname);
         perror("Error: ");
         return -1;
     }
@@ -176,6 +176,7 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len)
     for (unsigned i = 0; i < len; i++)
         fprintf(stderr, "%02X ", tmp[i]);
     fprintf(stderr, "\n\n");
+    fflush(stderr);
 #endif
     char *o_data = (char *)malloc(len);
     if (o_data == NULL)
@@ -250,7 +251,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     dev->xfer[0].rx_buf = (unsigned long)i_data;
     dev->xfer[0].len = len; // whichever is shorter to avoid access violation
 #ifdef SPIDEBUG
-    fprintf(stderr, "%s: Output length: %d\n", __func__, dev->xfer[0].len);
+    eprintf("Output length: %d", dev->xfer[0].len);
 #endif
     pthread_mutex_lock(&(spibus_lock[dev->bus]));
     if (dev->cs_internal == CS_EXTERNAL) // chip select is not internal
@@ -285,6 +286,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     for (unsigned i = 0; i < olen; i++)
         fprintf(stderr, "%02X ", tmp[i]);
     fprintf(stderr, "\n\n");
+    fflush(stderr);
 #endif
     return status;
 }
