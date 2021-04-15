@@ -66,7 +66,15 @@ int spibus_init(spibus *dev)
         gpioSetMode(dev->cs_gpio, GPIO_OUT);
         gpioWrite(dev->cs_gpio, GPIO_HIGH);
     }
-    speed = 1000000; // Temporary (and max) bus speed
+    if (dev->speed < 750000)
+        speed = 1000000; // Temporary (and max) bus speed
+    else if (dev->speed < 2000000)
+        speed = 2500000;
+    else
+    {
+        eprintf("SPI requested speed %u > 2 MHz, speed unavailable in driver. Make changes and proceed with caution.", dev->speed);
+        return -1;
+    }
     // open SPI bus
     char spibusname[256];
     if (snprintf(spibusname, 256, "/dev/spidev%d.%d", dev->bus, dev->cs) < 0)
