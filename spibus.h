@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <linux/types.h>
 #include <linux/spi/spidev.h>
+#include <stdbool.h>
 
 #define NUM_SPI_MASTER 3 // 0, 1, 2
 
@@ -33,13 +34,13 @@ typedef struct __attribute__((packed))
     uint8_t cs_internal;             /// If this var is set, SPI bus has its own CS, if unset, GPIO needs to be evoked
     int cs_gpio;                     /// GPIO chipselect
     unsigned long sleeplen;          /// Sleep length between two transfers in microseconds
+    bool internal_rotation;          /// Rotate buffers for MSB internally
 } spibus;
 
 /**
  * @brief Initializes SPI bus with pre-configured settings. Settings are preconfigured
  * by device initializer whose member is the spibus struct that is passed as input.
- * Memory for the struct should be cleared before setting configs to avoid spurious flag
- * settings.
+ * Set all the flags as necessary to avoid initialization issues.
  * 
  * @param dev spibus struct containing SPI Bus number to open, mode, speed, lsbfirst etc
  * 
@@ -71,6 +72,24 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len);
  * @return status of the ioctl call for the transfer
  */
 int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t olen);
+/**
+ * @brief Invert array for MSB first transfer of multibyte data. Memory
+ * management is entirely upon the caller.
+ * 
+ * @param dest Destination pointer
+ * @param src Source pointer
+ * @param len Length of source and destination buffers.
+ */
+inline void spibus_invert(void *dest, void *src, ssize_t len)
+{
+    unsigned int last = len - 1;
+    unsigned char *tmpsrc = (unsigned char *)src, *tmpdest = (unsigned char *)dest;
+    for (int i = 0; i < len; i++)
+    {
+        tmpdest[i] = tmpsrc[last - i];
+    }
+    return;
+}
 /**
  * @brief Destroy the SPI bus. For errors, look at close() syscall.
  */

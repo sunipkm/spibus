@@ -140,25 +140,6 @@ int spibus_init(spibus *dev)
     return 1;
 }
 
-/**
- * @brief Invert array for MSB first transfer of multibyte data. Memory
- * management is entirely upon the caller.
- * 
- * @param dest Destination pointer
- * @param src Source pointer
- * @param len Length of source and destination buffers.
- */
-inline void spibus_invert(void *dest, void *src, ssize_t len)
-{
-    unsigned int last = len - 1;
-    unsigned char *tmpsrc = (unsigned char *)src, *tmpdest = (unsigned char *)dest;
-    for (int i = 0; i < len; i++)
-    {
-        tmpdest[i] = tmpsrc[last - i];
-    }
-    return;
-}
-
 int spibus_xfer(spibus *dev, void *data, ssize_t len)
 {
     int status = 0;
@@ -176,7 +157,7 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len)
         perror("malloc");
         return -1;
     }
-    if (!dev->lsb) // MSB first
+    if ((!(dev->lsb)) && dev->internal_rotation) // MSB first
     {
         spibus_invert(o_data, data, len);
     }
@@ -221,7 +202,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     ssize_t len = ilen < olen ? ilen : olen; // common length
 
     char *o_data = (char *)malloc(len);
-    if (!dev->lsb) // MSB first
+    if ((!dev->lsb) && dev->internal_rotation) // MSB first
     {
         spibus_invert(o_data, out, len);
     }
@@ -263,7 +244,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     }
     usleep(dev->sleeplen);
 
-    if (!dev->lsb) // MSB first
+    if ((!dev->lsb) && dev->internal_rotation) // MSB first
     {
         spibus_invert(in, i_data, len);
     }
