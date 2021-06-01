@@ -70,9 +70,13 @@ int spibus_init(spibus *dev)
         speed = 1000000; // Temporary (and max) bus speed
     else if (dev->speed < 2000000)
         speed = 2500000;
+    else if (dev->speed < 5000000)
+    {
+        speed = 8000000;
+    }
     else
     {
-        eprintf("SPI requested speed %u > 2 MHz, speed unavailable in driver. Make changes and proceed with caution.", dev->speed);
+        eprintf("SPI requested speed %u > 5 MHz, speed unavailable in driver. Make changes and proceed with caution.", dev->speed);
         return -1;
     }
     // open SPI bus
