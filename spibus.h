@@ -80,7 +80,7 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
  * @param src Source pointer
  * @param len Length of source and destination buffers.
  */
-inline void spibus_invert(void *dest, void *src, ssize_t len)
+static inline void spibus_invert(void *dest, void *src, ssize_t len)
 {
     unsigned int last = len - 1;
     unsigned char *tmpsrc = (unsigned char *)src, *tmpdest = (unsigned char *)dest;
