@@ -1,25 +1,39 @@
+/**
+ * @file spibus.c
+ * @author Sunip K. Mukherjee (sunipkmukherjee@gmail.com)
+ * @brief SPI Bus driver implementation.
+ * @version 1.0
+ * @date 2020-10-12
+ *
+ * @copyright Copyright (c) 2022
+ *
+ */
+
 #include "spibus.h"
 #include <string.h>
-#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <getopt.h>
 #include <fcntl.h>
 #include <errno.h>
 #include <sys/ioctl.h>
-#include <linux/types.h>
-#include <linux/spi/spidev.h>
-#include <signal.h>
+
+#if SPIBUS_CS_GPIO > 0
 #include <gpiodev/gpiodev.h>
+#endif
 
-#define eprintf(str, ...)                                    \
-    fprintf(stderr, "%s" str "\n", __func__, ##__VA_ARGS__); \
-    fflush(stderr);
+#ifdef eprintf
+#undef eprintf
+#endif
+#define eprintf(str, ...)                                        \
+    {                                                            \
+        fprintf(stderr, "%s" str "\n", __func__, ##__VA_ARGS__); \
+        fflush(stderr);                                          \
+    }
 
-static pthread_mutex_t spibus_lock[NUM_SPI_MASTER]; /// Lock corresponding to a bus master for interleaved read/writes and GPIO issues
-static int spibus_mutex_initd = 0;                  /// mutex initialization indicator
+static pthread_mutex_t spibus_lock[NUM_SPI_MASTER]; ///< Lock corresponding to a bus master for interleaved read/writes and GPIO issues
+static int spibus_mutex_initd = 0;                  ///< mutex initialization indicator
 
 int spibus_init(spibus *dev)
 {
@@ -43,8 +57,8 @@ int spibus_init(spibus *dev)
         }
     }
     int file;
-    __u8 mode, lsb, bits;
-    __u32 speed;
+    uint8_t mode, lsb, bits;
+    uint32_t speed;
 
     mode = dev->mode;
     lsb = dev->lsb;
@@ -60,12 +74,13 @@ int spibus_init(spibus *dev)
         speed = 500000; // 1 MHz
         dev->speed = speed;
     }
-
+#if SPIBUS_CS_GPIO > 0
     if (dev->cs_internal == CS_EXTERNAL) // GPIO as chip select
     {
         gpioSetMode(dev->cs_gpio, GPIO_OUT);
         gpioWrite(dev->cs_gpio, GPIO_HIGH);
     }
+#endif // SPIBUS_CS_GPIO
     if (dev->speed < 750000)
         speed = 1000000; // Temporary (and max) bus speed
     else if (dev->speed < 2000000)
@@ -144,10 +159,10 @@ int spibus_init(spibus *dev)
 
     dev->fd = file; // Update the file descriptor
 
-    dev->xfer[0].cs_change = 0;             // Keep CS activated for the whole word
-    dev->xfer[0].delay_usecs = 0;           // delay in microseconds
-    dev->xfer[0].speed_hz = dev->speed;     // speed of communication
-    dev->xfer[0].bits_per_word = dev->bits; // bits per word
+    dev->xfer->cs_change = 0;             // Keep CS activated for the whole word
+    dev->xfer->delay_usecs = 0;           // delay in microseconds
+    dev->xfer->speed_hz = dev->speed;     // speed of communication
+    dev->xfer->bits_per_word = dev->bits; // bits per word
 
     return 1;
 }
@@ -155,6 +170,7 @@ int spibus_init(spibus *dev)
 int spibus_xfer(spibus *dev, void *data, ssize_t len)
 {
     int status = 0;
+    char *o_data = NULL;
 #ifdef SPIDEBUG
     unsigned char *tmp = data;
     fprintf(stderr, "%s: ", __func__);
@@ -163,47 +179,59 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len)
     fprintf(stderr, "\n\n");
     fflush(stderr);
 #endif
-    char *o_data = (char *)malloc(len);
-    if (o_data == NULL)
-    {
-        eprintf("Could not allocate memory for MSB conversion");
-        perror("malloc");
-        return -1;
-    }
     if ((!(dev->lsb)) && (dev->internal_rotation) && (len > 1)) // MSB first
     {
+        o_data = (char *)malloc(len);
+        if (o_data == NULL)
+        {
+            eprintf("Could not allocate memory for output MSB conversion");
+            perror("malloc");
+            status = -1;
+            goto cleanup;
+        }
         spibus_invert(o_data, data, len);
     }
     else
     {
-        memcpy(o_data, data, len);
+        o_data = data;
     }
-    // TODO: 64-bit compatibility in typecasting
-    dev->xfer[0].tx_buf = (unsigned long)o_data;
-    dev->xfer[0].len = len;
+    dev->xfer->tx_buf = (uint64_t)o_data;
+    dev->xfer->len = len;
     pthread_mutex_lock(&(spibus_lock[dev->bus]));
+#if SPIBUS_CS_GPIO > 0
     if (dev->cs_internal == CS_EXTERNAL) // chip select is not internal
     {
         gpioWrite(dev->cs_gpio, GPIO_LOW); // active low transfer
     }
+#endif // SPIBUS_CS_GPIO
     status = ioctl(dev->fd, SPI_IOC_MESSAGE(1), dev->xfer);
+#if SPIBUS_CS_GPIO > 0
     if (dev->cs_internal == CS_EXTERNAL)
     {
         gpioWrite(dev->cs_gpio, GPIO_HIGH); // high after transfer
     }
+#endif // SPIBUS_CS_GPIO
     pthread_mutex_unlock(&(spibus_lock[dev->bus]));
     if (status < 0)
     {
         perror("SPIBUS: SPI transfer");
-        return -1;
+        status = -1;
+        goto cleanup;
     }
     usleep(dev->sleeplen);
+cleanup:
+    if ((o_data != NULL) && (o_data != data))
+    {
+        free(o_data);
+        o_data = NULL;
+    }
     return status;
 }
 
-int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t olen)
+int spibus_xfer_full(spibus *dev, void *in, void *out, ssize_t len)
 {
     int status = 0;
+    char *i_data = NULL, *o_data = NULL;
 #ifdef SPIDEBUG
     fprintf(stderr, "%s: In -> 0x%p, Out -> 0x%p\n", __func__, in, out);
     unsigned char *tmp = out;
@@ -212,58 +240,74 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
         fprintf(stderr, "%02X ", tmp[i]);
     fprintf(stderr, "\n");
 #endif
-    ssize_t len = ilen < olen ? ilen : olen; // common length
 
-    char *o_data = (char *)malloc(len);
     if ((!(dev->lsb)) && (dev->internal_rotation) && (len > 1)) // MSB first
     {
+        o_data = (char *)malloc(len);
+        if (o_data == NULL)
+        {
+            eprintf("Could not allocate memory for output MSB conversion");
+            perror("malloc");
+            status = -1;
+            goto cleanup;
+        }
         spibus_invert(o_data, out, len);
     }
     else
     {
-        memcpy(o_data, out, len);
+        o_data = out;
     }
 
-    char *i_data = (char *)malloc(len);
-    if (i_data == NULL)
+    if ((!(dev->lsb)) && (dev->internal_rotation) && (len > 1)) // MSB first
     {
-        eprintf("Could not allocate memory for MSB conversion");
-        perror("malloc");
-        return -1;
+        i_data = (char *)malloc(len);
+        if (i_data == NULL)
+        {
+            eprintf("Could not allocate memory for input MSB conversion");
+            perror("malloc");
+            status = -1;
+            goto cleanup;
+        }
     }
+    else
+    {
+        i_data = in;
+    }
+
     // TODO: 64-bit compatibility in typecasting
-    dev->xfer[0].tx_buf = (unsigned long)o_data;
-    dev->xfer[0].rx_buf = (unsigned long)i_data;
-    dev->xfer[0].len = len; // whichever is shorter to avoid access violation
+    dev->xfer->tx_buf = (uint64_t)o_data;
+    dev->xfer->rx_buf = (uint64_t)i_data;
+    dev->xfer->len = len; // whichever is shorter to avoid access violation
 #ifdef SPIDEBUG
-    eprintf("Output length: %d", dev->xfer[0].len);
+    eprintf("Output length: %d", dev->xfer->len);
 #endif
     pthread_mutex_lock(&(spibus_lock[dev->bus]));
+#if SPIBUS_CS_GPIO > 0
     if (dev->cs_internal == CS_EXTERNAL) // chip select is not internal
     {
         gpioWrite(dev->cs_gpio, GPIO_LOW); // active low transfer
                                            // usleep(100);
     }
+#endif // SPIBUS_CS_GPIO
     status = ioctl(dev->fd, SPI_IOC_MESSAGE(1), dev->xfer);
+#if SPIBUS_CS_GPIO > 0
     if (dev->cs_internal == CS_EXTERNAL)
     {
         gpioWrite(dev->cs_gpio, GPIO_HIGH); // high after transfer
     }
+#endif // SPIBUS_CS_GPIO
     pthread_mutex_unlock(&(spibus_lock[dev->bus]));
     if (status < 0)
     {
         perror("SPIBUS: SPI transfer");
-        return -1;
+        status = -1;
+        goto cleanup;
     }
     usleep(dev->sleeplen);
 
     if ((!(dev->lsb)) && (dev->internal_rotation) && (len > 1)) // MSB first
     {
         spibus_invert(in, i_data, len);
-    }
-    else
-    {
-        memcpy(in, i_data, len);
     }
 #ifdef SPIDEBUG
     tmp = in;
@@ -273,6 +317,18 @@ int spibus_xfer_full(spibus *dev, void *in, ssize_t ilen, void *out, ssize_t ole
     fprintf(stderr, "\n\n");
     fflush(stderr);
 #endif
+    status = 1;
+cleanup:
+    if ((i_data != in) && (i_data != NULL))
+    {
+        free(i_data);
+        i_data = NULL;
+    }
+    if ((o_data != out) && (o_data != NULL))
+    {
+        free(o_data);
+        o_data = NULL;
+    }
     return status;
 }
 

@@ -1,0 +1,2 @@
+# Simplified API for SPI Comm on Linux
+This library wraps `open()`, `ioctl()`, and `close()` calls used for SPI communication on Linux with simpler `spibus_*` methods. The API also provides mutex protection to bus access for multithreaded use. Requires `gcc` and `-std=gnu11` for compilation.
