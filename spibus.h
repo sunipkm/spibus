@@ -11,6 +11,7 @@
 #ifndef SPI_BUS_H
 #define SPI_BUS_H
 
+#include <unistd.h>
 #include <stdint.h>
 #include <linux/spi/spidev.h>
 #include <stdbool.h>
