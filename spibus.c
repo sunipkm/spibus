@@ -11,7 +11,7 @@
 
 #include "spibus.h"
 #include <string.h>
-#include <string.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>

@@ -20,10 +20,9 @@
 
 #ifndef SPIBUS_CS_GPIO
 #define SPIBUS_CS_GPIO 0 ///< Set this preprocessor variable to a positive number to support GPIO CS using gpiodev library.
-#else
-#define CS_EXTERNAL 0
 #endif
 
+#define CS_EXTERNAL 0
 #define CS_INTERNAL 1
 
 /** @struct spibus
@@ -86,11 +85,11 @@ typedef struct
  */
 int spibus_init(spibus *dev);
 /**
- * @brief Transfer data over SPI bus described by dev.
+ * @brief Write data over SPI bus described by dev.
  *
  * @param dev spibus struct describing the SPI bus.
  * @param data Ideally a buffer of bytes. The function uses the lsb flag to
- * fix the endianness of the input array (assumed to be little endian).
+ * fix the endianness of the input array (assumed to be little endian). Data is written from this buffer during transfer.
  * @param len Length of the supplied buffer (in bytes).
  *
  * @return status of the ioctl call for the transfer.
@@ -101,9 +100,9 @@ int spibus_xfer(spibus *dev, void *data, ssize_t len);
  *
  * @param dev spibus struct describing the SPI bus
  * @param in Ideally a buffer of bytes. The function uses the lsb flag to
- * fix the endianness of the input array (assumed to be little endian).
+ * fix the endianness of the input array (assumed to be little endian). Data is read into the buffer during transfer.
  * @param out Ideally a buffer of bytes. The function uses the lsb flag to
- * fix the endianness of the output array (assumed to be little endian).
+ * fix the endianness of the output array (assumed to be little endian). Data is written from this buffer during transfer.
  * @param len Length of input and output buffers, must be same otherwise memory access violation will occur.
  *
  * @return status of the ioctl call for the transfer.
