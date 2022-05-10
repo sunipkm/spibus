@@ -26,10 +26,10 @@
 #ifdef eprintf
 #undef eprintf
 #endif
-#define eprintf(str, ...)                                        \
-    {                                                            \
-        fprintf(stderr, "%s" str "\n", __func__, ##__VA_ARGS__); \
-        fflush(stderr);                                          \
+#define eprintf(str, ...)                                                                      \
+    {                                                                                          \
+        fprintf(stderr, "%s/%s():%d: " str "\n", __FILE__, __func__, __LINE__, ##__VA_ARGS__); \
+        fflush(stderr);                                                                        \
     }
 
 static pthread_mutex_t spibus_lock[NUM_SPI_MASTER]; ///< Lock corresponding to a bus master for interleaved read/writes and GPIO issues
