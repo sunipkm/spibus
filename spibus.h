@@ -84,30 +84,43 @@ typedef struct
  * @return 1 on success, -1 on failure.
  */
 int spibus_init(spibus *dev);
+
 /**
  * @brief Write data over SPI bus described by dev.
+ * 
+ * NOTE: This function works similarly to a 'write,' where @param data is the data buffer to be written, not read into.
+ * No data is read or transferred into @param data during the SPI transaction.
  *
  * @param dev spibus struct describing the SPI bus.
  * @param data Ideally a buffer of bytes. The function uses the lsb flag to
- * fix the endianness of the input array (assumed to be little endian). Data is written from this buffer during transfer.
+ * fix the endianness of the input array (assumed to be little endian). Data is written from this buffer during 
+ * transfer. No data is read or transferred into @param data during the SPI transaction.
  * @param len Length of the supplied buffer (in bytes).
  *
  * @return status of the ioctl call for the transfer.
  */
 int spibus_xfer(spibus *dev, void *data, ssize_t len);
+
 /**
  * @brief Transfer data over SPI bus described by dev.
+ * 
+ * NOTE: This function works similarly to a 'write' called at the same time as a 'read.' For instance, data begins being
+ * read into @param in from the bus at the same time data begins to be written to the bus from @param out. No data is
+ * read or transferred into @param out during the SPI transaction, all data read is stored in @param in.
  *
  * @param dev spibus struct describing the SPI bus
- * @param in Ideally a buffer of bytes. The function uses the lsb flag to
- * fix the endianness of the input array (assumed to be little endian). Data is read into the buffer during transfer.
- * @param out Ideally a buffer of bytes. The function uses the lsb flag to
- * fix the endianness of the output array (assumed to be little endian). Data is written from this buffer during transfer.
+ * @param in The input byte-buffer to store data read from the SPI bus. Ideally a buffer of bytes. The function uses the
+ * lsb flag to fix the endianness of the input array (assumed to be little endian). Data is read into the buffer during 
+ * transfer.
+ * @param out The output byte-buffer which holds data to be written to the SPI bus. Ideally a buffer of bytes. The 
+ * function uses the lsb flag to fix the endianness of the output array (assumed to be little endian). Data is written 
+ * from this buffer during transfer. No data is read or transferred into @param out during the SPI transaction.
  * @param len Length of input and output buffers, must be same otherwise memory access violation will occur.
  *
  * @return status of the ioctl call for the transfer.
  */
 int spibus_xfer_full(spibus *dev, void *in, void *out, ssize_t len);
+
 /**
  * @brief Invert array for MSB first transfer of multibyte data. Memory
  * management is entirely upon the caller.
@@ -126,6 +139,7 @@ static inline void spibus_invert(void *dest, void *src, ssize_t len)
     }
     return;
 }
+
 /**
  * @brief Destroy the SPI bus. For errors, look at close() syscall.
  */
