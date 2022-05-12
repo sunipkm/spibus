@@ -11,6 +11,10 @@
 #ifndef SPI_BUS_H
 #define SPI_BUS_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 #include <unistd.h>
 #include <stdint.h>
 #include <linux/spi/spidev.h>
@@ -144,5 +148,9 @@ static inline void spibus_invert(void *dest, void *src, ssize_t len)
  * @brief Destroy the SPI bus. For errors, look at close() syscall.
  */
 void spibus_destroy(spibus *dev);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif // SPI_BUS_H
